@@ -1,5 +1,3 @@
-'use server'
-
 import { db } from '@/lib/db/firebase';
 import { collection, doc, getDoc, setDoc, updateDoc, increment, getDocs } from 'firebase/firestore';
 import { generateUniqueShortcode, isValidCustomPath, isValidUrl, normalizeUrl } from './url';
@@ -47,34 +45,7 @@ export async function createLink(originalUrl: string, customPath?: string) {
   }
 }
 
-export async function getLinks(): Promise<Link[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, LINKS_COLLECTION));
-    return querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      createdAt: doc.data().createdAt.toDate(),
-      updatedAt: doc.data().updatedAt.toDate(),
-    })) as Link[];
-  } catch (error) {
-    console.error('Get links error:', error);
-    return [];
-  }
-}
 
-export async function getLink(id: string): Promise<Link | null> {
-  try {
-    const docRef = doc(db, LINKS_COLLECTION, id);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      return docSnap.data() as Link;
-    }
-    return null;
-  } catch (error) {
-    console.error('Get link error:', error);
-    return null;
-  }
-}
 
 export async function incrementClickCount(id: string) {
   try {

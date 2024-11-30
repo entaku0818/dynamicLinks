@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import { getLinks } from '@/lib/db/links';
+import { getLinks } from '@/app/links';
 
 interface Link {
   id: string;

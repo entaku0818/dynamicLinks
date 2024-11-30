@@ -1,29 +1,22 @@
 // src/app/[...shortcode]/page.tsx
-import { getDoc, doc } from 'firebase/firestore';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { redirect } from 'next/navigation';
-import { getLink } from '@/lib/db/links';
+import { redirect, RedirectType } from 'next/navigation';
+import { getLink } from '../links';
+
 
 
 export default async function ShortCodePage({
-    params,
-  }: {
-    params: { shortcode: string[] };
-  }) {
-    const shortcode = params.shortcode[0];
-    
-    try {
-      const link = await getLink(shortcode);
+  params,
+}: {
+  params: { shortcode: string[] };
+}) {
+  const { shortcode: paramValue } = await params;
+  const code = paramValue[0];
   
-      if (!link) {
-        redirect('/');
-      }
+    const link = await getLink(code);
 
-  
-      redirect(link.originalUrl);
-    } catch (error) {
-      console.error('Redirect error:', error);
-      redirect('/');
+    if (!link) {
+      return redirect('/');
     }
-  }
+
+    redirect(link.originalUrl,RedirectType.replace);
+}
