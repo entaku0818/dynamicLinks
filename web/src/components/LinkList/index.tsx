@@ -1,11 +1,12 @@
 // components/LinkList/index.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { getLinks } from '@/lib/db/links';
 
 interface Link {
   id: string;
@@ -17,7 +18,27 @@ interface Link {
 
 export function LinkList() {
   const [links, setLinks] = React.useState<Link[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+
+  useEffect(() => {
+    async function fetchLinks() {
+      try {
+        const fetchedLinks = await getLinks();
+        setLinks(fetchedLinks);
+      } catch (error) {
+        console.error('Error fetching links:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchLinks();
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
   const copyToClipboard = async (shortUrl: string) => {
     try {
       await navigator.clipboard.writeText(shortUrl);

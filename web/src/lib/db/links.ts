@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db/firebase';
-import { collection, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, updateDoc, increment, getDocs } from 'firebase/firestore';
 import { generateUniqueShortcode, isValidCustomPath, isValidUrl, normalizeUrl } from './url';
 import { Link } from './schema';
 
@@ -44,6 +44,20 @@ export async function createLink(originalUrl: string, customPath?: string) {
   } catch (error) {
     console.error('Link creation error:', error);
     return { error: 'リンクの作成中にエラーが発生しました' };
+  }
+}
+
+export async function getLinks(): Promise<Link[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, LINKS_COLLECTION));
+    return querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
+      updatedAt: doc.data().updatedAt.toDate(),
+    })) as Link[];
+  } catch (error) {
+    console.error('Get links error:', error);
+    return [];
   }
 }
 

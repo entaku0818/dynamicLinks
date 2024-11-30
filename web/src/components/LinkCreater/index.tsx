@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Copy, ArrowRight } from 'lucide-react';
 import { LinkPreview } from './LinkPreview';
+import { createLink } from '@/lib/db/links';
 
 export function LinkCreator() {
   const [step, setStep] = useState(1);
@@ -19,17 +20,24 @@ export function LinkCreator() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      // ここにFirebaseのロジックを追加予定
-      const shortUrl = `${window.location.origin}/${customPath || 'generated-id'}`;
-      setGeneratedLink(shortUrl);
-      setStep(3);
+      const result = await createLink(originalUrl, customPath);
+      
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+  
+      if (result.link) {
+        const shortUrl = `${window.location.origin}/${result.link.id}`;
+        setGeneratedLink(shortUrl);
+        setStep(3);
+      }
     } catch (error) {
       toast.error('エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
   };
-
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(generatedLink);
