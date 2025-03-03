@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Copy, ArrowRight } from 'lucide-react';
 import { LinkPreview } from './LinkPreview';
 import { createLink } from '@/lib/db/links';
+import { Platform, DeepLinkConfig, RedirectRule, IOSConfig, AndroidConfig } from '@/lib/db/schema';
 
 export function LinkCreator() {
   const [step, setStep] = useState(1);
@@ -16,11 +17,26 @@ export function LinkCreator() {
   const [customPath, setCustomPath] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 新しいフィールド
+  const [platform, setPlatform] = useState<Platform>('web');
+  const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkConfig>({
+    ios: {},
+    android: {}
+  });
+  const [redirectRules, setRedirectRules] = useState<RedirectRule[]>([]);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const result = await createLink(originalUrl, customPath);
+      const result = await createLink(
+        originalUrl, 
+        customPath, 
+        platform,
+        deepLinkConfig,
+        redirectRules
+      );
       
       if (result.error) {
         toast.error(result.error);
@@ -37,6 +53,28 @@ export function LinkCreator() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // iOS設定の更新
+  const updateIOSConfig = (field: keyof IOSConfig, value: string) => {
+    setDeepLinkConfig(prev => ({
+      ...prev,
+      ios: {
+        ...prev.ios,
+        [field]: value
+      }
+    }));
+  };
+
+  // Android設定の更新
+  const updateAndroidConfig = (field: keyof AndroidConfig, value: string) => {
+    setDeepLinkConfig(prev => ({
+      ...prev,
+      android: {
+        ...prev.android,
+        [field]: value
+      }
+    }));
   };
   const copyToClipboard = async () => {
     try {
@@ -85,6 +123,86 @@ export function LinkCreator() {
               />
             </div>
             {customPath && <LinkPreview path={customPath} />}
+            
+            {/* プラットフォーム選択 */}
+            <div className="mt-4">
+              <div className="text-sm font-medium mb-2">プラットフォーム</div>
+              <div className="flex space-x-2">
+                {(['web', 'ios', 'android'] as Platform[]).map((p) => (
+                  <Button
+                    key={p}
+                    type="button"
+                    variant={platform === p ? "default" : "outline"}
+                    onClick={() => setPlatform(p)}
+                    className="flex-1"
+                  >
+                    {p === 'web' ? 'Web' : p === 'ios' ? 'iOS' : 'Android'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            
+            {/* 詳細設定トグル */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="w-full text-sm"
+            >
+              {showAdvancedOptions ? '詳細設定を隠す' : '詳細設定を表示'}
+            </Button>
+            
+            {/* 詳細設定 */}
+            {showAdvancedOptions && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                {platform === 'ios' && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">iOS設定</div>
+                    <Input
+                      placeholder="Universal Link"
+                      value={deepLinkConfig.ios?.universalLink || ''}
+                      onChange={(e) => updateIOSConfig('universalLink', e.target.value)}
+                      className="mb-2"
+                    />
+                    <Input
+                      placeholder="カスタムスキーム (例: myapp://)"
+                      value={deepLinkConfig.ios?.customScheme || ''}
+                      onChange={(e) => updateIOSConfig('customScheme', e.target.value)}
+                      className="mb-2"
+                    />
+                    <Input
+                      placeholder="App Store ID"
+                      value={deepLinkConfig.ios?.appStoreId || ''}
+                      onChange={(e) => updateIOSConfig('appStoreId', e.target.value)}
+                    />
+                  </div>
+                )}
+                
+                {platform === 'android' && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Android設定</div>
+                    <Input
+                      placeholder="App Link"
+                      value={deepLinkConfig.android?.appLink || ''}
+                      onChange={(e) => updateAndroidConfig('appLink', e.target.value)}
+                      className="mb-2"
+                    />
+                    <Input
+                      placeholder="カスタムスキーム (例: myapp://)"
+                      value={deepLinkConfig.android?.customScheme || ''}
+                      onChange={(e) => updateAndroidConfig('customScheme', e.target.value)}
+                      className="mb-2"
+                    />
+                    <Input
+                      placeholder="パッケージ名"
+                      value={deepLinkConfig.android?.packageName || ''}
+                      onChange={(e) => updateAndroidConfig('packageName', e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="flex space-x-2">
               <Button 
                 variant="outline"

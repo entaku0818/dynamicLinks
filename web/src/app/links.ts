@@ -29,8 +29,14 @@ export async function getLinks(): Promise<Link[]> {
             originalUrl: data.originalUrl,
             customPath: data.customPath,
             clicks: data.clicks,
-            createdAt: data.createdAt.toDate().toISOString(),
-            updatedAt: data.updatedAt.toDate().toISOString()
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+            platform: data.platform || 'web',
+            deepLinkConfig: data.deepLinkConfig || { ios: {}, android: {} },
+            redirectRules: data.redirectRules || [],
+            analytics: data.analytics || { platforms: {}, devices: {}, browsers: {}, regions: {} },
+            status: data.status || 'active',
+            planType: data.planType || 'free'
           } as Link;
         }
         return null;

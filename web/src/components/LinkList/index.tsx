@@ -4,17 +4,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, Smartphone, Globe, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { getLinks } from '@/app/links';
-
-interface Link {
-  id: string;
-  originalUrl: string;
-  customPath?: string;
-  clicks: number;
-  createdAt: Date;
-}
+import { Link, Platform } from '@/lib/db/schema';
 
 export function LinkList() {
   const [links, setLinks] = React.useState<Link[]>([]);
@@ -87,9 +80,36 @@ export function LinkList() {
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    クリック数: {link.clicks} / 作成日: {new Date(link.createdAt).toLocaleDateString()}
+                  <div className="mt-2 text-sm text-gray-500 flex items-center space-x-4">
+                    <span className="flex items-center">
+                      <Activity className="h-4 w-4 mr-1" />
+                      クリック数: {link.clicks}
+                    </span>
+                    <span className="flex items-center">
+                      {link.platform === 'web' ? (
+                        <Globe className="h-4 w-4 mr-1" />
+                      ) : (
+                        <Smartphone className="h-4 w-4 mr-1" />
+                      )}
+                      {link.platform === 'ios' ? 'iOS' : link.platform === 'android' ? 'Android' : 'Web'}
+                    </span>
+                    <span>
+                      作成日: {new Date(link.createdAt).toLocaleDateString()}
+                    </span>
+                    <span>
+                      ステータス: {link.status === 'active' ? '有効' : link.status === 'inactive' ? '無効' : '期限切れ'}
+                    </span>
                   </div>
+                  {link.platform !== 'web' && (
+                    <div className="mt-2 text-xs text-gray-400">
+                      {link.platform === 'ios' && link.deepLinkConfig.ios?.universalLink && (
+                        <div>Universal Link: {link.deepLinkConfig.ios.universalLink}</div>
+                      )}
+                      {link.platform === 'android' && link.deepLinkConfig.android?.appLink && (
+                        <div>App Link: {link.deepLinkConfig.android.appLink}</div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
