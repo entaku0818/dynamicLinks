@@ -8,12 +8,57 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject private var linkHandler: DeepLinkHandler
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        VStack(spacing: 20) {
+            Text("DynamicLinkSDK Sample")
+                .font(.title)
+                .padding()
+            
+            if let link = linkHandler.currentLink {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Current Deep Link")
+                        .font(.headline)
+                    
+                    Text("URL: \(link.url.absoluteString)")
+                        .font(.subheadline)
+                    
+                    Text("Parameters:")
+                        .font(.headline)
+                        .padding(.top)
+                    
+                    ForEach(link.parameters.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                        Text("\(key): \(value)")
+                            .font(.subheadline)
+                    }
+                    
+                    if !link.customParameters.isEmpty {
+                        Text("Custom Parameters:")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        ForEach(link.customParameters.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                            Text("\(key): \(value)")
+                                .font(.subheadline)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+            } else {
+                Text("No active deep link")
+                    .foregroundColor(.gray)
+            }
+            
+            if let error = linkHandler.errorMessage {
+                Text("Error: \(error)")
+                    .foregroundColor(.red)
+                    .padding()
+            }
+            
+            Spacer()
         }
         .padding()
     }
@@ -21,4 +66,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(DeepLinkHandler())
 }
