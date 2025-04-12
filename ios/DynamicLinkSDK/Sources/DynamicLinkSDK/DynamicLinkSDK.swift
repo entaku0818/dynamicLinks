@@ -49,8 +49,67 @@ public final class DynamicLinkSDK {
             throw DynamicLinkError.configurationMissing
         }
         
-        // TODO: 実装
-        return false
+        // スキームの検証
+        guard url.scheme == config.scheme else {
+            log(.debug, "Invalid scheme: \(url.scheme ?? "nil")")
+            return false
+        }
+        
+        // URLコンポーネントの解析
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            log(.error, "Failed to parse URL components")
+            return false
+        }
+        
+        // パラメータの抽出
+        var parameters: [String: String] = [:]
+        components.queryItems?.forEach { item in
+            parameters[item.name] = item.value
+        }
+        
+        // 必要なパラメータの検証
+        for requiredParam in config.requiredParameters {
+            guard parameters[requiredParam] != nil else {
+                log(.error, "Missing required parameter: \(requiredParam)")
+                throw DynamicLinkError.missingRequiredParameter(requiredParam)
+            }
+        }
+        
+        // カスタムパラメータの抽出
+        var customParameters: [String: String] = [:]
+        parameters.forEach { key, value in
+            if key.hasPrefix(config.customParameterPrefix) {
+                let customKey = String(key.dropFirst(config.customParameterPrefix.count))
+                customParameters[customKey] = value
+            }
+        }
+        
+        // リンクの作成と検証
+        let link = DynamicLink(
+            url: url,
+            parameters: parameters,
+            customParameters: customParameters,
+            timestamp: Date()
+        )
+        
+        // リンクの有効性チェック
+        guard link.isValid else {
+            if let error = link.error {
+                log(.error, "Link validation failed: \(error.localizedDescription)")
+                throw error
+            }
+            return false
+        }
+        
+        // フォールバックURLの処理
+        if let fallbackURL = config.fallbackURL, !link.isValid {
+            log(.warning, "Redirecting to fallback URL: \(fallbackURL)")
+            UIApplication.shared.open(fallbackURL)
+            return false
+        }
+        
+        log(.info, "Successfully processed deep link: \(url)")
+        return true
     }
     
     /// SDKをリセットする（主にテスト用）
@@ -60,6 +119,32 @@ public final class DynamicLinkSDK {
         
         configuration = nil
         isInitialized = false
+    }
+    
+    /// ログを出力する
+    /// - Parameters:
+    ///   - level: ログレベル
+    ///   - message: ログメッセージ
+    private func log(_ level: LogLevel, _ message: String) {
+        guard let config = configuration, level <= config.logLevel else {
+            return
+        }
+        
+        let prefix: String
+        switch level {
+        case .error:
+            prefix = "🔴 ERROR"
+        case .warning:
+            prefix = "⚠️ WARNING"
+        case .info:
+            prefix = "ℹ️ INFO"
+        case .debug:
+            prefix = "🔍 DEBUG"
+        case .none:
+            return
+        }
+        
+        print("[DynamicLinkSDK] \(prefix): \(message)")
     }
 }
 
@@ -83,6 +168,9 @@ public struct DynamicLinkConfig {
     /// ログレベル
     public let logLevel: LogLevel
     
+    /// 必要なパラメータ
+    public let requiredParameters: [String]
+    
     /// イニシャライザ
     /// - Parameters:
     ///   - scheme: アプリのスキーム
@@ -91,13 +179,15 @@ public struct DynamicLinkConfig {
     ///   - fallbackURL: リダイレクトURL
     ///   - customParameterPrefix: カスタムパラメータのプレフィックス
     ///   - logLevel: ログレベル
+    ///   - requiredParameters: 必要なパラメータ
     public init(
         scheme: String,
         isDebugEnabled: Bool = false,
         linkExpirationTime: TimeInterval = 3600,
         fallbackURL: URL? = nil,
         customParameterPrefix: String = "dl_",
-        logLevel: LogLevel = .info
+        logLevel: LogLevel = .info,
+        requiredParameters: [String] = []
     ) {
         self.scheme = scheme
         self.isDebugEnabled = isDebugEnabled
@@ -105,6 +195,7 @@ public struct DynamicLinkConfig {
         self.fallbackURL = fallbackURL
         self.customParameterPrefix = customParameterPrefix
         self.logLevel = logLevel
+        self.requiredParameters = requiredParameters
     }
     
     /// 設定のバリデーション
@@ -160,6 +251,18 @@ public enum DynamicLinkError: LocalizedError {
     /// 無効なパラメータプレフィックス
     case invalidParameterPrefix
     
+    /// リンクが期限切れ
+    case linkExpired
+    
+    /// 必要なパラメータが不足
+    case missingRequiredParameter(String)
+    
+    /// 無効なパラメータ形式
+    case invalidParameterFormat(String)
+    
+    /// カスタムエラー
+    case custom(String)
+    
     public var errorDescription: String? {
         switch self {
         case .alreadyInitialized:
@@ -174,6 +277,14 @@ public enum DynamicLinkError: LocalizedError {
             return "Invalid expiration time"
         case .invalidParameterPrefix:
             return "Invalid parameter prefix"
+        case .linkExpired:
+            return "Link expired"
+        case .missingRequiredParameter(let param):
+            return "Missing required parameter: \(param)"
+        case .invalidParameterFormat(let param):
+            return "Invalid parameter format: \(param)"
+        case .custom(let message):
+            return message
         }
     }
 }
