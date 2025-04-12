@@ -1,55 +1,132 @@
 # DynamicLinkSDK
 
-Dynamic LinkサービスのiOS SDKです。アプリ開発者が簡単にディープリンク機能を実装できるようにするためのSDKを提供します。
+DynamicLinkSDK is a powerful and easy-to-use deep linking solution for iOS applications. It provides a robust framework for handling deep links with validation, logging, and error handling capabilities.
 
-## 要件
+## Features
+
+- 🔗 Deep link handling with URL scheme validation
+- ⚙️ Configurable parameters and validation
+- 🔒 Secure parameter handling
+- 📝 Comprehensive logging system
+- ⏱️ Link expiration management
+- 🔄 Fallback URL support
+- 🧪 Extensive test coverage
+
+## Requirements
 
 - iOS 13.0+
 - Swift 5.0+
-- Xcode 13.0+
+- Xcode 14.0+
 
-## インストール
+## Installation
 
 ### Swift Package Manager
 
-1. Xcodeで「File」→「Add Packages...」を選択
-2. 検索フィールドにリポジトリのURLを入力
-3. バージョンルールを選択
-4. 「Add Package」をクリック
+Add the following to your `Package.swift`:
 
-### 手動インストール
+```swift
+dependencies: [
+    .package(url: "https://github.com/yourusername/DynamicLinkSDK.git", from: "1.0.0")
+]
+```
 
-1. このリポジトリをクローン
-2. `ios/DynamicLinkSDK`フォルダをプロジェクトに追加
+Or add it through Xcode:
+1. File > Add Packages...
+2. Enter the repository URL
+3. Select version rules
+4. Click Add Package
 
-## 使い方
+## Usage
+
+### Basic Setup
 
 ```swift
 import DynamicLinkSDK
 
-// SDKの初期化
-let config = DynamicLinkConfig(scheme: "myapp")
-DynamicLinkSDK.shared.configure(with: config)
+// Initialize the SDK
+let config = DynamicLinkConfig(
+    scheme: "myapp",
+    requiredParameters: ["id", "type"],
+    linkExpirationTime: 3600, // 1 hour
+    fallbackURL: URL(string: "https://example.com"),
+    customParameterPrefix: "custom_",
+    logLevel: .info
+)
 
-// ディープリンクの処理
-func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-    return DynamicLinkSDK.shared.handleDeepLink(url)
+do {
+    try DynamicLinkSDK.shared.initialize(with: config)
+} catch {
+    print("Initialization failed: \(error)")
 }
 ```
 
-## 機能
+### Handling Deep Links
 
-- [ ] カスタムスキームのサポート
-- [ ] ディープリンクパラメータの解析
-- [ ] エラーハンドリング
-- [ ] デバッグモード
-- [ ] ログ出力
-- [ ] パフォーマンス計測
+```swift
+// In your AppDelegate or SceneDelegate
+func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+    do {
+        return try DynamicLinkSDK.shared.handleDeepLink(url)
+    } catch {
+        print("Failed to handle deep link: \(error)")
+        return false
+    }
+}
+```
 
-## 開発状況
+### Accessing Parameters
 
-現在、基本的な機能を実装中です。詳細は[GitHub Issues](https://github.com/entaku0818/dynamicLinks/issues/6)を参照してください。
+```swift
+// Get parameters from a deep link
+if let link = DynamicLinkSDK.shared.currentLink {
+    let id = link.parameters["id"]
+    let type = link.parameters["type"]
+    let customParams = link.customParameters
+}
+```
 
-## ライセンス
+## Configuration Options
 
-このプロジェクトはMITライセンスの下で公開されています。 
+### DynamicLinkConfig
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| scheme | String | URL scheme for deep links |
+| requiredParameters | [String] | Required parameters for validation |
+| linkExpirationTime | TimeInterval | Link expiration time in seconds |
+| fallbackURL | URL? | Fallback URL for invalid links |
+| customParameterPrefix | String | Prefix for custom parameters |
+| logLevel | LogLevel | Logging level for the SDK |
+
+### LogLevel
+
+| Level | Description |
+|-------|-------------|
+| .none | No logging |
+| .error | Error messages only |
+| .warning | Warnings and errors |
+| .info | Info, warnings, and errors |
+| .debug | All messages including debug |
+
+## Error Handling
+
+The SDK throws `DynamicLinkError` for various error conditions:
+
+```swift
+enum DynamicLinkError: Error {
+    case notInitialized
+    case configurationMissing
+    case invalidScheme
+    case missingRequiredParameter(String)
+    case linkExpired
+    case invalidURL
+}
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. 
