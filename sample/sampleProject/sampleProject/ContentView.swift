@@ -16,6 +16,27 @@ struct ContentView: View {
                 .font(.title)
                 .padding()
             
+            // サンプルURLの表示
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Sample URLs")
+                    .font(.headline)
+                
+                ForEach(linkHandler.sampleURLs, id: \.absoluteString) { url in
+                    Button(action: {
+                        UIApplication.shared.open(url)
+                    }) {
+                        Text(url.absoluteString)
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(10)
+            
             if let link = linkHandler.currentLink {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Current Deep Link")

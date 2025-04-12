@@ -2,6 +2,7 @@
 // https://docs.swift.org/swift-book
 
 import Foundation
+import UIKit
 
 /// DynamicLinkSDKのメインクラス
 public final class DynamicLinkSDK {
@@ -16,6 +17,9 @@ public final class DynamicLinkSDK {
     
     /// SDKの設定
     private var configuration: DynamicLinkConfig?
+    
+    /// 現在のディープリンク
+    public private(set) var currentLink: DynamicLink?
     
     /// プライベートイニシャライザ
     private init() {}
@@ -50,7 +54,10 @@ public final class DynamicLinkSDK {
         }
         
         // スキームの検証
-        guard url.scheme == config.scheme else {
+        let isCustomScheme = url.scheme?.lowercased() == config.customScheme.lowercased()
+        let isHttpScheme = url.scheme?.lowercased() == config.scheme.lowercased()
+        
+        guard isCustomScheme || isHttpScheme else {
             log(.debug, "Invalid scheme: \(url.scheme ?? "nil")")
             return false
         }
@@ -108,6 +115,7 @@ public final class DynamicLinkSDK {
             return false
         }
         
+        currentLink = link
         log(.info, "Successfully processed deep link: \(url)")
         return true
     }
@@ -148,18 +156,61 @@ public final class DynamicLinkSDK {
     }
 }
 
+/// ディープリンクを表す構造体
+public struct DynamicLink {
+    /// URL
+    public let url: URL
+    
+    /// パラメータ
+    public let parameters: [String: String]
+    
+    /// カスタムパラメータ
+    public let customParameters: [String: String]
+    
+    /// タイムスタンプ
+    public let timestamp: Date
+    
+    /// エラー
+    public let error: DynamicLinkError?
+    
+    /// 有効かどうか
+    public var isValid: Bool {
+        return error == nil
+    }
+    
+    public init(
+        url: URL,
+        parameters: [String: String],
+        customParameters: [String: String],
+        timestamp: Date,
+        error: DynamicLinkError? = nil
+    ) {
+        self.url = url
+        self.parameters = parameters
+        self.customParameters = customParameters
+        self.timestamp = timestamp
+        self.error = error
+    }
+}
+
 /// SDKの設定を保持する構造体
 public struct DynamicLinkConfig {
-    /// アプリのスキーム
+    /// ドメイン
+    public let domain: String
+    
+    /// パスプレフィックス
+    public let pathPrefix: String
+    
+    /// URLスキーム（デフォルトは "https"）
     public let scheme: String
     
-    /// デバッグモードの有効/無効
-    public let isDebugEnabled: Bool
+    /// 必須パラメータ
+    public let requiredParameters: [String]
     
     /// リンクの有効期限（秒）
     public let linkExpirationTime: TimeInterval
     
-    /// リダイレクトURL
+    /// フォールバックURL
     public let fallbackURL: URL?
     
     /// カスタムパラメータのプレフィックス
@@ -168,53 +219,86 @@ public struct DynamicLinkConfig {
     /// ログレベル
     public let logLevel: LogLevel
     
-    /// 必要なパラメータ
-    public let requiredParameters: [String]
+    /// カスタムスキーム（アプリ用）
+    public let customScheme: String
     
-    /// イニシャライザ
-    /// - Parameters:
-    ///   - scheme: アプリのスキーム
-    ///   - isDebugEnabled: デバッグモードの有効/無効
-    ///   - linkExpirationTime: リンクの有効期限（秒）
-    ///   - fallbackURL: リダイレクトURL
-    ///   - customParameterPrefix: カスタムパラメータのプレフィックス
-    ///   - logLevel: ログレベル
-    ///   - requiredParameters: 必要なパラメータ
     public init(
-        scheme: String,
-        isDebugEnabled: Bool = false,
+        domain: String,
+        pathPrefix: String = "/app/",
+        scheme: String = "https",
+        requiredParameters: [String] = [],
         linkExpirationTime: TimeInterval = 3600,
         fallbackURL: URL? = nil,
-        customParameterPrefix: String = "dl_",
+        customParameterPrefix: String = "custom_",
         logLevel: LogLevel = .info,
-        requiredParameters: [String] = []
+        customScheme: String
     ) {
+        self.domain = domain
+        self.pathPrefix = pathPrefix
         self.scheme = scheme
-        self.isDebugEnabled = isDebugEnabled
+        self.requiredParameters = requiredParameters
         self.linkExpirationTime = linkExpirationTime
         self.fallbackURL = fallbackURL
         self.customParameterPrefix = customParameterPrefix
         self.logLevel = logLevel
-        self.requiredParameters = requiredParameters
+        self.customScheme = customScheme
     }
     
-    /// 設定のバリデーション
-    /// - Throws: DynamicLinkError
+    /// 設定を検証する
     public func validate() throws {
-        // スキームのバリデーション
-        guard !scheme.isEmpty else {
+        // ドメインの検証
+        guard !domain.isEmpty else {
+            throw DynamicLinkError.invalidDomain
+        }
+        
+        // スキームの検証
+        guard ["http", "https"].contains(scheme.lowercased()) else {
             throw DynamicLinkError.invalidScheme
         }
         
-        // 有効期限のバリデーション
+        // カスタムスキームの検証
+        guard !customScheme.isEmpty else {
+            throw DynamicLinkError.invalidScheme
+        }
+        
+        // 有効期限の検証
         guard linkExpirationTime > 0 else {
             throw DynamicLinkError.invalidExpirationTime
         }
         
-        // カスタムパラメータプレフィックスのバリデーション
+        // カスタムパラメータプレフィックスの検証
         guard !customParameterPrefix.isEmpty else {
             throw DynamicLinkError.invalidParameterPrefix
         }
+    }
+    
+    /// ディープリンクURLを生成する
+    /// - Parameter parameters: パラメータ
+    /// - Returns: 生成されたURL
+    public func generateDeepLinkURL(parameters: [String: String]) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = domain
+        components.path = pathPrefix
+        
+        var queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+        components.queryItems = queryItems
+        
+        return components.url
+    }
+    
+    /// カスタムスキームURLを生成する
+    /// - Parameter parameters: パラメータ
+    /// - Returns: 生成されたURL
+    public func generateCustomSchemeURL(parameters: [String: String]) -> URL? {
+        var components = URLComponents()
+        components.scheme = customScheme
+        components.host = "open"
+        
+        var queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+        components.queryItems = queryItems
+        
+        return components.url
     }
 }
 
@@ -263,6 +347,9 @@ public enum DynamicLinkError: LocalizedError {
     /// カスタムエラー
     case custom(String)
     
+    /// 無効なドメイン
+    case invalidDomain
+    
     public var errorDescription: String? {
         switch self {
         case .alreadyInitialized:
@@ -285,6 +372,8 @@ public enum DynamicLinkError: LocalizedError {
             return "Invalid parameter format: \(param)"
         case .custom(let message):
             return message
+        case .invalidDomain:
+            return "Invalid domain"
         }
     }
 }

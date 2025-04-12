@@ -25,16 +25,19 @@ struct sampleProjectApp: App {
     
     private func setupDynamicLinkSDK() {
         let config = DynamicLinkConfig(
-            scheme: "sampleapp",
+            domain: "example.com",
+            pathPrefix: "/app/",
+            scheme: "https",
             requiredParameters: ["id", "type"],
             linkExpirationTime: 3600,
-            fallbackURL: URL(string: "https://example.com"),
+            fallbackURL: URL(string: "https://example.com/fallback"),
             customParameterPrefix: "custom_",
-            logLevel: .debug
+            logLevel: .debug,
+            customScheme: "sampleapp"
         )
         
         do {
-            try DynamicLinkSDK.shared.initialize(with: config)
+            try DynamicLinkSDK.shared.configure(with: config)
         } catch {
             print("Failed to initialize DynamicLinkSDK: \(error)")
         }
@@ -44,6 +47,11 @@ struct sampleProjectApp: App {
 class DeepLinkHandler: ObservableObject {
     @Published var currentLink: DynamicLink?
     @Published var errorMessage: String?
+    @Published var sampleURLs: [URL] = []
+    
+    init() {
+        generateSampleURLs()
+    }
     
     func handleDeepLink(_ url: URL) {
         do {
@@ -55,6 +63,25 @@ class DeepLinkHandler: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             currentLink = nil
+        }
+    }
+    
+    private func generateSampleURLs() {
+        let parameters = [
+            "id": "123",
+            "type": "test",
+            "custom_param1": "value1",
+            "custom_param2": "value2"
+        ]
+        
+        // HTTPスキームのURL
+        if let httpURL = URL(string: "https://example.com/app/?id=123&type=test&custom_param1=value1&custom_param2=value2") {
+            sampleURLs.append(httpURL)
+        }
+        
+        // カスタムスキームのURL
+        if let customURL = URL(string: "sampleapp://open?id=123&type=test&custom_param1=value1&custom_param2=value2") {
+            sampleURLs.append(customURL)
         }
     }
 }

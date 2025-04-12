@@ -33,9 +33,22 @@
 		6172252D2DAAA13800B8FF6C /* sampleProjectUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sampleProjectUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		617225452DAAA64100B8FF6C /* Exceptions for "sampleProject" folder in "sampleProject" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 617225122DAAA13700B8FF6C /* sampleProject */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		617225152DAAA13700B8FF6C /* sampleProject */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				617225452DAAA64100B8FF6C /* Exceptions for "sampleProject" folder in "sampleProject" target */,
+			);
 			path = sampleProject;
 			sourceTree = "<group>";
 		};
