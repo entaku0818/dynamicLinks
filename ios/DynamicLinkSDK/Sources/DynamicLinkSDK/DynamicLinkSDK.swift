@@ -4,9 +4,15 @@
 import Foundation
 
 /// DynamicLinkSDKのメインクラス
-public class DynamicLinkSDK {
+public final class DynamicLinkSDK {
     /// シングルトンインスタンス
     public static let shared = DynamicLinkSDK()
+    
+    /// 初期化状態を管理するフラグ
+    private var isInitialized = false
+    
+    /// スレッドセーフな初期化を保証するためのロック
+    private let initializationLock = NSLock()
     
     /// SDKの設定
     private var configuration: DynamicLinkConfig?
@@ -16,16 +22,43 @@ public class DynamicLinkSDK {
     
     /// SDKの設定を行う
     /// - Parameter config: SDKの設定
-    public func configure(with config: DynamicLinkConfig) {
+    /// - Throws: DynamicLinkError
+    public func configure(with config: DynamicLinkConfig) throws {
+        initializationLock.lock()
+        defer { initializationLock.unlock() }
+        
+        guard !isInitialized else {
+            throw DynamicLinkError.alreadyInitialized
+        }
+        
         self.configuration = config
+        isInitialized = true
     }
     
     /// ディープリンクを処理する
     /// - Parameter url: 処理するURL
     /// - Returns: 処理が成功したかどうか
-    public func handleDeepLink(_ url: URL) -> Bool {
+    /// - Throws: DynamicLinkError
+    public func handleDeepLink(_ url: URL) throws -> Bool {
+        guard isInitialized else {
+            throw DynamicLinkError.notInitialized
+        }
+        
+        guard let config = configuration else {
+            throw DynamicLinkError.configurationMissing
+        }
+        
         // TODO: 実装
         return false
+    }
+    
+    /// SDKをリセットする（主にテスト用）
+    internal func reset() {
+        initializationLock.lock()
+        defer { initializationLock.unlock() }
+        
+        configuration = nil
+        isInitialized = false
     }
 }
 
@@ -44,5 +77,28 @@ public struct DynamicLinkConfig {
     public init(scheme: String, isDebugEnabled: Bool = false) {
         self.scheme = scheme
         self.isDebugEnabled = isDebugEnabled
+    }
+}
+
+/// SDKのエラー型
+public enum DynamicLinkError: LocalizedError {
+    /// SDKが既に初期化されている
+    case alreadyInitialized
+    
+    /// SDKが初期化されていない
+    case notInitialized
+    
+    /// 設定が存在しない
+    case configurationMissing
+    
+    public var errorDescription: String? {
+        switch self {
+        case .alreadyInitialized:
+            return "SDK is already initialized"
+        case .notInitialized:
+            return "SDK is not initialized"
+        case .configurationMissing:
+            return "Configuration is missing"
+        }
     }
 }
