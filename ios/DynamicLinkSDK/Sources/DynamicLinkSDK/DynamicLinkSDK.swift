@@ -31,6 +31,7 @@ public final class DynamicLinkSDK {
             throw DynamicLinkError.alreadyInitialized
         }
         
+        try config.validate()
         self.configuration = config
         isInitialized = true
     }
@@ -70,13 +71,72 @@ public struct DynamicLinkConfig {
     /// デバッグモードの有効/無効
     public let isDebugEnabled: Bool
     
+    /// リンクの有効期限（秒）
+    public let linkExpirationTime: TimeInterval
+    
+    /// リダイレクトURL
+    public let fallbackURL: URL?
+    
+    /// カスタムパラメータのプレフィックス
+    public let customParameterPrefix: String
+    
+    /// ログレベル
+    public let logLevel: LogLevel
+    
     /// イニシャライザ
     /// - Parameters:
     ///   - scheme: アプリのスキーム
     ///   - isDebugEnabled: デバッグモードの有効/無効
-    public init(scheme: String, isDebugEnabled: Bool = false) {
+    ///   - linkExpirationTime: リンクの有効期限（秒）
+    ///   - fallbackURL: リダイレクトURL
+    ///   - customParameterPrefix: カスタムパラメータのプレフィックス
+    ///   - logLevel: ログレベル
+    public init(
+        scheme: String,
+        isDebugEnabled: Bool = false,
+        linkExpirationTime: TimeInterval = 3600,
+        fallbackURL: URL? = nil,
+        customParameterPrefix: String = "dl_",
+        logLevel: LogLevel = .info
+    ) {
         self.scheme = scheme
         self.isDebugEnabled = isDebugEnabled
+        self.linkExpirationTime = linkExpirationTime
+        self.fallbackURL = fallbackURL
+        self.customParameterPrefix = customParameterPrefix
+        self.logLevel = logLevel
+    }
+    
+    /// 設定のバリデーション
+    /// - Throws: DynamicLinkError
+    public func validate() throws {
+        // スキームのバリデーション
+        guard !scheme.isEmpty else {
+            throw DynamicLinkError.invalidScheme
+        }
+        
+        // 有効期限のバリデーション
+        guard linkExpirationTime > 0 else {
+            throw DynamicLinkError.invalidExpirationTime
+        }
+        
+        // カスタムパラメータプレフィックスのバリデーション
+        guard !customParameterPrefix.isEmpty else {
+            throw DynamicLinkError.invalidParameterPrefix
+        }
+    }
+}
+
+/// ログレベル
+public enum LogLevel: Int, Comparable {
+    case none = 0
+    case error = 1
+    case warning = 2
+    case info = 3
+    case debug = 4
+    
+    public static func < (lhs: LogLevel, rhs: LogLevel) -> Bool {
+        return lhs.rawValue < rhs.rawValue
     }
 }
 
@@ -91,6 +151,15 @@ public enum DynamicLinkError: LocalizedError {
     /// 設定が存在しない
     case configurationMissing
     
+    /// 無効なスキーム
+    case invalidScheme
+    
+    /// 無効な有効期限
+    case invalidExpirationTime
+    
+    /// 無効なパラメータプレフィックス
+    case invalidParameterPrefix
+    
     public var errorDescription: String? {
         switch self {
         case .alreadyInitialized:
@@ -99,6 +168,12 @@ public enum DynamicLinkError: LocalizedError {
             return "SDK is not initialized"
         case .configurationMissing:
             return "Configuration is missing"
+        case .invalidScheme:
+            return "Invalid scheme"
+        case .invalidExpirationTime:
+            return "Invalid expiration time"
+        case .invalidParameterPrefix:
+            return "Invalid parameter prefix"
         }
     }
 }

@@ -21,13 +21,45 @@ final class DynamicLinkSDKTests: XCTestCase {
     }
     
     func testInitialization() throws {
-        // 初期化のテスト
-        let config = DynamicLinkConfig(scheme: "myapp")
-        try sdk.configure(with: config)
+        // 基本設定での初期化テスト
+        let basicConfig = DynamicLinkConfig(scheme: "myapp")
+        try sdk.configure(with: basicConfig)
+        
+        // 詳細設定での初期化テスト
+        let detailedConfig = DynamicLinkConfig(
+            scheme: "myapp",
+            isDebugEnabled: true,
+            linkExpirationTime: 7200,
+            fallbackURL: URL(string: "https://example.com"),
+            customParameterPrefix: "custom_",
+            logLevel: .debug
+        )
+        sdk.reset()
+        try sdk.configure(with: detailedConfig)
         
         // 二重初期化のテスト
-        XCTAssertThrowsError(try sdk.configure(with: config)) { error in
+        XCTAssertThrowsError(try sdk.configure(with: detailedConfig)) { error in
             XCTAssertEqual(error as? DynamicLinkError, .alreadyInitialized)
+        }
+    }
+    
+    func testConfigurationValidation() {
+        // 空のスキーム
+        let emptySchemeConfig = DynamicLinkConfig(scheme: "")
+        XCTAssertThrowsError(try emptySchemeConfig.validate()) { error in
+            XCTAssertEqual(error as? DynamicLinkError, .invalidScheme)
+        }
+        
+        // 無効な有効期限
+        let invalidExpirationConfig = DynamicLinkConfig(scheme: "myapp", linkExpirationTime: 0)
+        XCTAssertThrowsError(try invalidExpirationConfig.validate()) { error in
+            XCTAssertEqual(error as? DynamicLinkError, .invalidExpirationTime)
+        }
+        
+        // 空のパラメータプレフィックス
+        let emptyPrefixConfig = DynamicLinkConfig(scheme: "myapp", customParameterPrefix: "")
+        XCTAssertThrowsError(try emptyPrefixConfig.validate()) { error in
+            XCTAssertEqual(error as? DynamicLinkError, .invalidParameterPrefix)
         }
     }
     
@@ -70,5 +102,13 @@ final class DynamicLinkSDKTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 5.0)
+    }
+    
+    func testLogLevelComparison() {
+        XCTAssertTrue(LogLevel.none < LogLevel.error)
+        XCTAssertTrue(LogLevel.error < LogLevel.warning)
+        XCTAssertTrue(LogLevel.warning < LogLevel.info)
+        XCTAssertTrue(LogLevel.info < LogLevel.debug)
+        XCTAssertFalse(LogLevel.debug < LogLevel.none)
     }
 }
