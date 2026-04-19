@@ -1,132 +1,142 @@
-# DynamicLinkSDK
+# DynamicLinkSDK (iOS)
 
-DynamicLinkSDK is a powerful and easy-to-use deep linking solution for iOS applications. It provides a robust framework for handling deep links with validation, logging, and error handling capabilities.
+iOS用ディープリンク処理SDK。カスタムスキーム・Universal Linksに対応。
 
-## Features
+## 要件
 
-- 🔗 Deep link handling with URL scheme validation
-- ⚙️ Configurable parameters and validation
-- 🔒 Secure parameter handling
-- 📝 Comprehensive logging system
-- ⏱️ Link expiration management
-- 🔄 Fallback URL support
-- 🧪 Extensive test coverage
+- iOS 13+
+- Swift 5.9+
 
-## Requirements
-
-- iOS 13.0+
-- Swift 5.0+
-- Xcode 14.0+
-
-## Installation
+## インストール
 
 ### Swift Package Manager
 
-Add the following to your `Package.swift`:
+`Package.swift` に追加:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/DynamicLinkSDK.git", from: "1.0.0")
+    .package(url: "https://github.com/your-org/dynamiclinks", from: "1.0.0")
 ]
 ```
 
-Or add it through Xcode:
-1. File > Add Packages...
-2. Enter the repository URL
-3. Select version rules
-4. Click Add Package
+または Xcode の **File > Add Package Dependencies** から追加。
 
-## Usage
-
-### Basic Setup
+## セットアップ
 
 ```swift
 import DynamicLinkSDK
 
-// Initialize the SDK
-let config = DynamicLinkConfig(
-    scheme: "myapp",
-    requiredParameters: ["id", "type"],
-    linkExpirationTime: 3600, // 1 hour
-    fallbackURL: URL(string: "https://example.com"),
-    customParameterPrefix: "custom_",
-    logLevel: .info
-)
-
-do {
-    try DynamicLinkSDK.shared.initialize(with: config)
-} catch {
-    print("Initialization failed: \(error)")
-}
-```
-
-### Handling Deep Links
-
-```swift
-// In your AppDelegate or SceneDelegate
-func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-    do {
-        return try DynamicLinkSDK.shared.handleDeepLink(url)
-    } catch {
-        print("Failed to handle deep link: \(error)")
-        return false
+@main
+struct MyApp: App {
+    init() {
+        do {
+            try DynamicLinkSDK.shared.configure(with: DynamicLinkConfig(
+                domain: "link.example.com",
+                customScheme: "myapp"
+            ))
+        } catch {
+            print("SDK init error: \(error)")
+        }
     }
 }
 ```
 
-### Accessing Parameters
+## ディープリンクの処理
+
+### SwiftUI
 
 ```swift
-// Get parameters from a deep link
-if let link = DynamicLinkSDK.shared.currentLink {
-    let id = link.parameters["id"]
-    let type = link.parameters["type"]
-    let customParams = link.customParameters
+.onOpenURL { url in
+    do {
+        let handled = try DynamicLinkSDK.shared.handleDeepLink(url)
+        if handled, let link = DynamicLinkSDK.shared.currentLink {
+            // link.parameters, link.customParameters を使って画面遷移
+            let page = link.parameters["page"]
+        }
+    } catch {
+        print("Deep link error: \(error)")
+    }
 }
 ```
 
-## Configuration Options
-
-### DynamicLinkConfig
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| scheme | String | URL scheme for deep links |
-| requiredParameters | [String] | Required parameters for validation |
-| linkExpirationTime | TimeInterval | Link expiration time in seconds |
-| fallbackURL | URL? | Fallback URL for invalid links |
-| customParameterPrefix | String | Prefix for custom parameters |
-| logLevel | LogLevel | Logging level for the SDK |
-
-### LogLevel
-
-| Level | Description |
-|-------|-------------|
-| .none | No logging |
-| .error | Error messages only |
-| .warning | Warnings and errors |
-| .info | Info, warnings, and errors |
-| .debug | All messages including debug |
-
-## Error Handling
-
-The SDK throws `DynamicLinkError` for various error conditions:
+### UIKit
 
 ```swift
-enum DynamicLinkError: Error {
-    case notInitialized
-    case configurationMissing
-    case invalidScheme
-    case missingRequiredParameter(String)
-    case linkExpired
-    case invalidURL
+func application(_ app: UIApplication, open url: URL,
+                 options: [UIApplication.OpenURLOptionsKey: Any]) -> Bool {
+    return (try? DynamicLinkSDK.shared.handleDeepLink(url)) ?? false
 }
 ```
 
-## License
+## 設定オプション
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+| パラメータ | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|------|-----------|------|
+| `domain` | String | ✅ | - | ドメイン (例: `link.example.com`) |
+| `customScheme` | String | ✅ | - | カスタムスキーム (例: `myapp`) |
+| `scheme` | String | | `"https"` | HTTPスキーム |
+| `pathPrefix` | String | | `"/app/"` | パスプレフィックス |
+| `requiredParameters` | [String] | | `[]` | 必須パラメータ名リスト |
+| `linkExpirationTime` | TimeInterval | | `3600` | 有効期限（秒） |
+| `fallbackURL` | URL? | | `nil` | フォールバックURL |
+| `customParameterPrefix` | String | | `"custom_"` | カスタムパラメータのプレフィックス |
+| `logLevel` | LogLevel | | `.info` | ログレベル |
 
-## Contributing
+## URL生成
 
-Contributions are welcome! Please feel free to submit a Pull Request. 
+```swift
+let config = DynamicLinkConfig(domain: "link.example.com", customScheme: "myapp")
+
+// HTTPSリンク
+let url = config.generateDeepLinkURL(parameters: ["page": "home", "ref": "banner"])
+// → https://link.example.com/app/?page=home&ref=banner
+
+// カスタムスキームリンク
+let customUrl = config.generateCustomSchemeURL(parameters: ["page": "profile"])
+// → myapp://open?page=profile
+```
+
+## カスタムパラメータ
+
+`customParameterPrefix`（デフォルト: `custom_`）から始まるパラメータは `customParameters` に自動分類されます。
+
+```
+myapp://open?custom_campaign=summer&custom_source=email&page=home
+```
+
+```swift
+let link = DynamicLinkSDK.shared.currentLink
+link?.parameters["page"]            // → "home"
+link?.customParameters["campaign"]  // → "summer"
+link?.customParameters["source"]    // → "email"
+```
+
+## エラーハンドリング
+
+```swift
+do {
+    try DynamicLinkSDK.shared.handleDeepLink(url)
+} catch DynamicLinkError.notInitialized {
+    // configure() を先に呼ぶ必要がある
+} catch DynamicLinkError.alreadyInitialized {
+    // 既に初期化済み
+} catch DynamicLinkError.missingRequiredParameter(let name) {
+    print("必須パラメータが不足: \(name)")
+} catch {
+    print(error.localizedDescription)
+}
+```
+
+## ログレベル
+
+| レベル | 説明 |
+|--------|------|
+| `.none` | ログなし |
+| `.error` | エラーのみ |
+| `.warning` | 警告・エラー |
+| `.info` | 情報・警告・エラー（デフォルト） |
+| `.debug` | 全メッセージ |
+
+## ライセンス
+
+MIT License
