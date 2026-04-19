@@ -1,4 +1,4 @@
-import { redirect, RedirectType } from 'next/navigation';
+import { redirect, RedirectType, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getLink } from '../links';
 import { PlatformDetector } from '@/lib/platform/detector';
@@ -18,7 +18,7 @@ export default async function ShortCodePage({
 
   const link = await getLink(code);
   if (!link || link.status !== 'active') {
-    return redirect('/', RedirectType.replace);
+    return notFound();
   }
 
   const detector = new PlatformDetector(userAgent);
