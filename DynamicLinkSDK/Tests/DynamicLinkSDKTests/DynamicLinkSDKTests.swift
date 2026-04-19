@@ -3,108 +3,214 @@ import XCTest
 
 final class DynamicLinkSDKTests: XCTestCase {
     var sdk: DynamicLinkSDK!
-    
+
     override func setUp() {
         super.setUp()
         sdk = DynamicLinkSDK.shared
-        sdk.reset() // 各テスト前に状態をリセット
+        sdk.reset()
     }
-    
+
     override func tearDown() {
         super.tearDown()
-        sdk.reset() // 各テスト後に状態をリセット
+        sdk.reset()
     }
-    
+
+    // MARK: - Singleton
+
     func testSharedInstance() {
-        // シングルトンインスタンスのテスト
         XCTAssertTrue(DynamicLinkSDK.shared === DynamicLinkSDK.shared)
     }
-    
-    func testInitialization() throws {
-        // 基本設定での初期化テスト
-        let basicConfig = DynamicLinkConfig(scheme: "myapp")
-        try sdk.configure(with: basicConfig)
-        
-        // 詳細設定での初期化テスト
-        let detailedConfig = DynamicLinkConfig(
-            scheme: "myapp",
-            isDebugEnabled: true,
+
+    // MARK: - Initialization
+
+    func testInitializationWithBasicConfig() throws {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        XCTAssertNoThrow(try sdk.configure(with: config))
+    }
+
+    func testInitializationWithDetailedConfig() throws {
+        let config = DynamicLinkConfig(
+            domain: "example.com",
             linkExpirationTime: 7200,
             fallbackURL: URL(string: "https://example.com"),
             customParameterPrefix: "custom_",
-            logLevel: .debug
+            logLevel: .debug,
+            customScheme: "myapp"
         )
-        sdk.reset()
-        try sdk.configure(with: detailedConfig)
-        
-        // 二重初期化のテスト
-        XCTAssertThrowsError(try sdk.configure(with: detailedConfig)) { error in
+        XCTAssertNoThrow(try sdk.configure(with: config))
+    }
+
+    func testDoubleInitializationThrows() throws {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        try sdk.configure(with: config)
+        XCTAssertThrowsError(try sdk.configure(with: config)) { error in
             XCTAssertEqual(error as? DynamicLinkError, .alreadyInitialized)
         }
     }
-    
-    func testConfigurationValidation() {
-        // 空のスキーム
-        let emptySchemeConfig = DynamicLinkConfig(scheme: "")
-        XCTAssertThrowsError(try emptySchemeConfig.validate()) { error in
+
+    // MARK: - Configuration Validation
+
+    func testEmptyDomainThrows() {
+        let config = DynamicLinkConfig(domain: "", customScheme: "myapp")
+        XCTAssertThrowsError(try config.validate()) { error in
+            XCTAssertEqual(error as? DynamicLinkError, .invalidDomain)
+        }
+    }
+
+    func testEmptyCustomSchemeThrows() {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "")
+        XCTAssertThrowsError(try config.validate()) { error in
             XCTAssertEqual(error as? DynamicLinkError, .invalidScheme)
         }
-        
-        // 無効な有効期限
-        let invalidExpirationConfig = DynamicLinkConfig(scheme: "myapp", linkExpirationTime: 0)
-        XCTAssertThrowsError(try invalidExpirationConfig.validate()) { error in
+    }
+
+    func testInvalidExpirationTimeThrows() {
+        let config = DynamicLinkConfig(domain: "example.com", linkExpirationTime: 0, customScheme: "myapp")
+        XCTAssertThrowsError(try config.validate()) { error in
             XCTAssertEqual(error as? DynamicLinkError, .invalidExpirationTime)
         }
-        
-        // 空のパラメータプレフィックス
-        let emptyPrefixConfig = DynamicLinkConfig(scheme: "myapp", customParameterPrefix: "")
-        XCTAssertThrowsError(try emptyPrefixConfig.validate()) { error in
+    }
+
+    func testEmptyParameterPrefixThrows() {
+        let config = DynamicLinkConfig(domain: "example.com", customParameterPrefix: "", customScheme: "myapp")
+        XCTAssertThrowsError(try config.validate()) { error in
             XCTAssertEqual(error as? DynamicLinkError, .invalidParameterPrefix)
         }
     }
-    
-    func testHandleDeepLinkBeforeInitialization() {
-        // 初期化前のディープリンク処理テスト
-        let url = URL(string: "myapp://test")!
+
+    // MARK: - Deep Link Handling
+
+    func testHandleDeepLinkBeforeInitializationThrows() {
+        let url = URL(string: "myapp://open?param=value")!
         XCTAssertThrowsError(try sdk.handleDeepLink(url)) { error in
             XCTAssertEqual(error as? DynamicLinkError, .notInitialized)
         }
     }
-    
-    func testHandleDeepLink() throws {
-        // ディープリンク処理のテスト
-        let config = DynamicLinkConfig(scheme: "myapp")
+
+    func testHandleCustomSchemeDeepLink() throws {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
         try sdk.configure(with: config)
-        
-        let url = URL(string: "myapp://test")!
+
+        let url = URL(string: "myapp://open?foo=bar")!
         let result = try sdk.handleDeepLink(url)
-        
-        // 現在は未実装なのでfalseが返ることを確認
+
+        XCTAssertTrue(result)
+        XCTAssertNotNil(sdk.currentLink)
+        XCTAssertEqual(sdk.currentLink?.parameters["foo"], "bar")
+    }
+
+    func testHandleHTTPSDeepLink() throws {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        try sdk.configure(with: config)
+
+        let url = URL(string: "https://example.com/app/?foo=bar")!
+        let result = try sdk.handleDeepLink(url)
+
+        XCTAssertTrue(result)
+    }
+
+    func testHandleUnknownSchemeReturnsFalse() throws {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        try sdk.configure(with: config)
+
+        let url = URL(string: "otherapp://open")!
+        let result = try sdk.handleDeepLink(url)
+
         XCTAssertFalse(result)
     }
-    
+
+    // MARK: - Parameter Extraction
+
+    func testCustomParameterExtraction() throws {
+        let config = DynamicLinkConfig(
+            domain: "example.com",
+            customParameterPrefix: "custom_",
+            customScheme: "myapp"
+        )
+        try sdk.configure(with: config)
+
+        let url = URL(string: "myapp://open?custom_campaign=summer&custom_source=email&normal=value")!
+        let result = try sdk.handleDeepLink(url)
+
+        XCTAssertTrue(result)
+        XCTAssertEqual(sdk.currentLink?.customParameters["campaign"], "summer")
+        XCTAssertEqual(sdk.currentLink?.customParameters["source"], "email")
+        XCTAssertNil(sdk.currentLink?.customParameters["normal"])
+    }
+
+    func testRequiredParameterMissingThrows() throws {
+        let config = DynamicLinkConfig(
+            domain: "example.com",
+            requiredParameters: ["user_id"],
+            customScheme: "myapp"
+        )
+        try sdk.configure(with: config)
+
+        let url = URL(string: "myapp://open?foo=bar")!
+        XCTAssertThrowsError(try sdk.handleDeepLink(url)) { error in
+            if case .missingRequiredParameter(let param) = error as? DynamicLinkError {
+                XCTAssertEqual(param, "user_id")
+            } else {
+                XCTFail("Expected missingRequiredParameter error")
+            }
+        }
+    }
+
+    func testRequiredParameterPresent() throws {
+        let config = DynamicLinkConfig(
+            domain: "example.com",
+            requiredParameters: ["user_id"],
+            customScheme: "myapp"
+        )
+        try sdk.configure(with: config)
+
+        let url = URL(string: "myapp://open?user_id=123")!
+        let result = try sdk.handleDeepLink(url)
+        XCTAssertTrue(result)
+        XCTAssertEqual(sdk.currentLink?.parameters["user_id"], "123")
+    }
+
+    // MARK: - URL Generation
+
+    func testGenerateDeepLinkURL() {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        let url = config.generateDeepLinkURL(parameters: ["key": "value"])
+        XCTAssertNotNil(url)
+        XCTAssertEqual(url?.scheme, "https")
+        XCTAssertEqual(url?.host, "example.com")
+    }
+
+    func testGenerateCustomSchemeURL() {
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
+        let url = config.generateCustomSchemeURL(parameters: ["key": "value"])
+        XCTAssertNotNil(url)
+        XCTAssertEqual(url?.scheme, "myapp")
+    }
+
+    // MARK: - Thread Safety
+
     func testThreadSafety() {
-        // スレッドセーフのテスト
-        let config = DynamicLinkConfig(scheme: "myapp")
+        let config = DynamicLinkConfig(domain: "example.com", customScheme: "myapp")
         let expectation = XCTestExpectation(description: "Thread safety test")
         expectation.expectedFulfillmentCount = 100
-        
+
         for _ in 0..<100 {
             DispatchQueue.global().async {
                 do {
                     try self.sdk.configure(with: config)
                 } catch {
-                    // 二重初期化のエラーは期待通り
                     XCTAssertEqual(error as? DynamicLinkError, .alreadyInitialized)
                 }
                 expectation.fulfill()
             }
         }
-        
+
         wait(for: [expectation], timeout: 5.0)
     }
-    
-    func testLogLevelComparison() {
+
+    // MARK: - LogLevel
+
+    func testLogLevelOrdering() {
         XCTAssertTrue(LogLevel.none < LogLevel.error)
         XCTAssertTrue(LogLevel.error < LogLevel.warning)
         XCTAssertTrue(LogLevel.warning < LogLevel.info)

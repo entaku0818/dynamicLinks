@@ -1,4 +1,3 @@
-// components/LinkCreator/index.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -6,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Copy, ArrowRight } from 'lucide-react';
+import { Copy, ArrowRight, ArrowLeft } from 'lucide-react';
 import { LinkPreview } from './LinkPreview';
 import { createLink } from '@/lib/db/links';
-import { Platform, DeepLinkConfig, RedirectRule, IOSConfig, AndroidConfig } from '@/lib/db/schema';
+import { DeepLinkConfig, IOSConfig, AndroidConfig } from '@/lib/db/schema';
 
 export function LinkCreator() {
   const [step, setStep] = useState(1);
@@ -17,242 +16,173 @@ export function LinkCreator() {
   const [customPath, setCustomPath] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
-  // 新しいフィールド
-  const [platform, setPlatform] = useState<Platform>('web');
-  const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkConfig>({
-    ios: {},
-    android: {}
-  });
-  const [redirectRules, setRedirectRules] = useState<RedirectRule[]>([]);
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [deepLinkConfig, setDeepLinkConfig] = useState<DeepLinkConfig>({ ios: {}, android: {} });
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const updateIOSConfig = (field: keyof IOSConfig, value: string) =>
+    setDeepLinkConfig((prev) => ({ ...prev, ios: { ...prev.ios, [field]: value } }));
+
+  const updateAndroidConfig = (field: keyof AndroidConfig, value: string) =>
+    setDeepLinkConfig((prev) => ({ ...prev, android: { ...prev.android, [field]: value } }));
 
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const result = await createLink(
-        originalUrl, 
-        customPath, 
-        platform,
-        deepLinkConfig,
-        redirectRules
-      );
-      
+      const result = await createLink(originalUrl, customPath || undefined, 'web', deepLinkConfig);
       if (result.error) {
         toast.error(result.error);
         return;
       }
-  
       if (result.link) {
-        const shortUrl = `${window.location.origin}/${result.link.id}`;
-        setGeneratedLink(shortUrl);
+        setGeneratedLink(`${window.location.origin}/${result.link.id}`);
         setStep(3);
       }
-    } catch (error) {
+    } catch {
       toast.error('エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // iOS設定の更新
-  const updateIOSConfig = (field: keyof IOSConfig, value: string) => {
-    setDeepLinkConfig(prev => ({
-      ...prev,
-      ios: {
-        ...prev.ios,
-        [field]: value
-      }
-    }));
-  };
-
-  // Android設定の更新
-  const updateAndroidConfig = (field: keyof AndroidConfig, value: string) => {
-    setDeepLinkConfig(prev => ({
-      ...prev,
-      android: {
-        ...prev.android,
-        [field]: value
-      }
-    }));
-  };
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(generatedLink);
       toast.success('コピーしました');
-    } catch (error) {
+    } catch {
       toast.error('コピーに失敗しました');
     }
+  };
+
+  const reset = () => {
+    setStep(1);
+    setOriginalUrl('');
+    setCustomPath('');
+    setGeneratedLink('');
+    setDeepLinkConfig({ ios: {}, android: {} });
+    setShowAdvanced(false);
   };
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-xl text-center">
-          {step === 1 ? "リンクを作成" : 
-           step === 2 ? "カスタマイズ (任意)" : 
-           "リンクの準備ができました！"}
+          {step === 1 ? 'リンクを作成' : step === 2 ? 'カスタマイズ' : 'リンク完成！'}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+
+        {/* Step 1: URL入力 */}
         {step === 1 && (
           <div className="space-y-4">
-            <Input 
-              placeholder="リンク先のURLを入力"
+            <Input
+              placeholder="リンク先のURLを入力 (例: https://example.com)"
               value={originalUrl}
               onChange={(e) => setOriginalUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && originalUrl && setStep(2)}
             />
-            <Button 
-              className="w-full"
-              onClick={() => setStep(2)}
-              disabled={!originalUrl || isLoading}
-            >
+            <Button className="w-full" onClick={() => setStep(2)} disabled={!originalUrl}>
               次へ <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         )}
 
+        {/* Step 2: カスタマイズ */}
         {step === 2 && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="text-gray-500">{window.location.origin}/</div>
-              <Input 
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 shrink-0">{typeof window !== 'undefined' ? window.location.origin : ''}/</span>
+              <Input
                 placeholder="カスタムパス (任意)"
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
               />
             </div>
             {customPath && <LinkPreview path={customPath} />}
-            
-            {/* プラットフォーム選択 */}
-            <div className="mt-4">
-              <div className="text-sm font-medium mb-2">プラットフォーム</div>
-              <div className="flex space-x-2">
-                {(['web', 'ios', 'android'] as Platform[]).map((p) => (
-                  <Button
-                    key={p}
-                    type="button"
-                    variant={platform === p ? "default" : "outline"}
-                    onClick={() => setPlatform(p)}
-                    className="flex-1"
-                  >
-                    {p === 'web' ? 'Web' : p === 'ios' ? 'iOS' : 'Android'}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
+
             {/* 詳細設定トグル */}
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="w-full text-sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full text-sm text-gray-500 hover:text-gray-700 py-1"
             >
-              {showAdvancedOptions ? '詳細設定を隠す' : '詳細設定を表示'}
-            </Button>
-            
-            {/* 詳細設定 */}
-            {showAdvancedOptions && (
+              {showAdvanced ? '▲ アプリ設定を隠す' : '▼ アプリへのディープリンク設定（任意）'}
+            </button>
+
+            {showAdvanced && (
               <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                {platform === 'ios' && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">iOS設定</div>
-                    <Input
-                      placeholder="Universal Link"
-                      value={deepLinkConfig.ios?.universalLink || ''}
-                      onChange={(e) => updateIOSConfig('universalLink', e.target.value)}
-                      className="mb-2"
-                    />
-                    <Input
-                      placeholder="カスタムスキーム (例: myapp://)"
-                      value={deepLinkConfig.ios?.customScheme || ''}
-                      onChange={(e) => updateIOSConfig('customScheme', e.target.value)}
-                      className="mb-2"
-                    />
-                    <Input
-                      placeholder="App Store ID"
-                      value={deepLinkConfig.ios?.appStoreId || ''}
-                      onChange={(e) => updateIOSConfig('appStoreId', e.target.value)}
-                    />
-                  </div>
-                )}
-                
-                {platform === 'android' && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Android設定</div>
-                    <Input
-                      placeholder="App Link"
-                      value={deepLinkConfig.android?.appLink || ''}
-                      onChange={(e) => updateAndroidConfig('appLink', e.target.value)}
-                      className="mb-2"
-                    />
-                    <Input
-                      placeholder="カスタムスキーム (例: myapp://)"
-                      value={deepLinkConfig.android?.customScheme || ''}
-                      onChange={(e) => updateAndroidConfig('customScheme', e.target.value)}
-                      className="mb-2"
-                    />
-                    <Input
-                      placeholder="パッケージ名"
-                      value={deepLinkConfig.android?.packageName || ''}
-                      onChange={(e) => updateAndroidConfig('packageName', e.target.value)}
-                    />
-                  </div>
-                )}
+                {/* iOS設定 */}
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-700">iOS</p>
+                  <Input
+                    placeholder="Universal Link (例: https://example.com/app)"
+                    value={deepLinkConfig.ios?.universalLink || ''}
+                    onChange={(e) => updateIOSConfig('universalLink', e.target.value)}
+                  />
+                  <Input
+                    placeholder="カスタムスキーム (例: myapp://open)"
+                    value={deepLinkConfig.ios?.customScheme || ''}
+                    onChange={(e) => updateIOSConfig('customScheme', e.target.value)}
+                  />
+                  <Input
+                    placeholder="App Store ID (例: 123456789)"
+                    value={deepLinkConfig.ios?.appStoreId || ''}
+                    onChange={(e) => updateIOSConfig('appStoreId', e.target.value)}
+                  />
+                </div>
+
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-sm font-semibold text-gray-700">Android</p>
+                  <Input
+                    placeholder="App Link (例: https://example.com/app)"
+                    value={deepLinkConfig.android?.appLink || ''}
+                    onChange={(e) => updateAndroidConfig('appLink', e.target.value)}
+                  />
+                  <Input
+                    placeholder="カスタムスキーム (例: myapp://open)"
+                    value={deepLinkConfig.android?.customScheme || ''}
+                    onChange={(e) => updateAndroidConfig('customScheme', e.target.value)}
+                  />
+                  <Input
+                    placeholder="パッケージ名 (例: com.example.app)"
+                    value={deepLinkConfig.android?.packageName || ''}
+                    onChange={(e) => updateAndroidConfig('packageName', e.target.value)}
+                  />
+                </div>
               </div>
             )}
-            
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline"
-                onClick={() => setStep(1)}
-                disabled={isLoading}
-              >
-                戻る
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> 戻る
               </Button>
-              <Button 
-                className="flex-1"
-                onClick={handleSubmit}
-                disabled={isLoading}
-              >
-                リンクを生成
+              <Button className="flex-1" onClick={handleSubmit} disabled={isLoading}>
+                {isLoading ? '作成中...' : 'リンクを生成'}
               </Button>
             </div>
           </div>
         )}
 
+        {/* Step 3: 完成 */}
         {step === 3 && generatedLink && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="font-medium">{generatedLink}</div>
-              <Button variant="outline" size="icon" onClick={copyToClipboard}>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg gap-2">
+              <span className="font-medium truncate">{generatedLink}</span>
+              <Button variant="outline" size="icon" onClick={copyToClipboard} className="shrink-0">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex justify-center">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setStep(1);
-                  setOriginalUrl('');
-                  setCustomPath('');
-                  setGeneratedLink('');
-                }}
-              >
-                新しいリンクを作成
-              </Button>
-            </div>
+            <Button variant="outline" className="w-full" onClick={reset}>
+              新しいリンクを作成
+            </Button>
           </div>
         )}
 
-        <div className="flex justify-center space-x-2 mt-6">
+        {/* ステップインジケーター */}
+        <div className="flex justify-center gap-2 pt-2">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`h-2 w-2 rounded-full ${
-                i === step ? 'bg-blue-500' : 'bg-gray-200'
-              }`}
+              className={`h-2 w-2 rounded-full transition-colors ${i === step ? 'bg-blue-500' : 'bg-gray-200'}`}
             />
           ))}
         </div>

@@ -2,7 +2,9 @@
 // https://docs.swift.org/swift-book
 
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// DynamicLinkSDKのメインクラス
 public final class DynamicLinkSDK {
@@ -108,10 +110,12 @@ public final class DynamicLinkSDK {
             return false
         }
         
-        // フォールバックURLの処理
+        // フォールバックURLの処理（アプリ側で使用）
         if let fallbackURL = config.fallbackURL, !link.isValid {
             log(.warning, "Redirecting to fallback URL: \(fallbackURL)")
+            #if canImport(UIKit)
             UIApplication.shared.open(fallbackURL)
+            #endif
             return false
         }
         
@@ -281,7 +285,7 @@ public struct DynamicLinkConfig {
         components.host = domain
         components.path = pathPrefix
         
-        var queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+        let queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
         components.queryItems = queryItems
         
         return components.url
@@ -295,7 +299,7 @@ public struct DynamicLinkConfig {
         components.scheme = customScheme
         components.host = "open"
         
-        var queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+        let queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
         components.queryItems = queryItems
         
         return components.url
@@ -316,7 +320,7 @@ public enum LogLevel: Int, Comparable {
 }
 
 /// SDKのエラー型
-public enum DynamicLinkError: LocalizedError {
+public enum DynamicLinkError: LocalizedError, Equatable {
     /// SDKが既に初期化されている
     case alreadyInitialized
     
