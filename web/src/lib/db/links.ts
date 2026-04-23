@@ -38,7 +38,7 @@ export async function createLink(
     const newLink: Link = {
       id,
       originalUrl: normalizeUrl(originalUrl),
-      customPath: customPath || undefined,
+      ...(customPath ? { customPath } : {}),
       createdAt: now,
       updatedAt: now,
       clicks: 0,
