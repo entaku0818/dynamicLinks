@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLink, updateLinkStatus, deleteLink } from '@/lib/db/links';
+import { getLinkAdmin, updateLinkStatusAdmin, deleteLinkAdmin } from '@/lib/db/links-admin';
 import { Status } from '@/lib/db/schema';
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const link = await getLink(params.id);
+    const link = await getLinkAdmin(params.id);
     if (!link) {
       return NextResponse.json({ error: 'リンクが見つかりません' }, { status: 404 });
     }
@@ -30,7 +30,7 @@ export async function PATCH(
       return NextResponse.json({ error: '無効なステータスです' }, { status: 400 });
     }
 
-    await updateLinkStatus(params.id, status);
+    await updateLinkStatusAdmin(params.id, status);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(`PATCH /api/links/${params.id} error:`, error);
@@ -43,7 +43,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await deleteLink(params.id);
+    await deleteLinkAdmin(params.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(`DELETE /api/links/${params.id} error:`, error);

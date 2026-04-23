@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLinks, createLink } from '@/lib/db/links';
+import { getLinksAdmin, createLinkAdmin } from '@/lib/db/links-admin';
 import { Platform, DeepLinkConfig, RedirectRule } from '@/lib/db/schema';
 
 export async function GET() {
   try {
-    const links = await getLinks();
+    const links = await getLinksAdmin();
     return NextResponse.json({ links });
   } catch (error) {
     console.error('GET /api/links error:', error);
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URLは必須です' }, { status: 400 });
     }
 
-    const result = await createLink(
+    const result = await createLinkAdmin(
       originalUrl,
       customPath,
       platform,

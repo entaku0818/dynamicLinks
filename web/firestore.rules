@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /links/{linkId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['id', 'originalUrl', 'createdAt', 'updatedAt', 'clicks', 'status'])
+                    && request.resource.data.originalUrl is string
+                    && request.resource.data.status in ['active', 'inactive'];
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks', 'updatedAt', 'analytics', 'status']);
+      allow delete: if false;
+    }
+  }
+}
