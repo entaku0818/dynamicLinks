@@ -22,7 +22,10 @@ export async function createLinkAdmin(
       return { error: 'カスタムパスには英数字、ハイフン、アンダースコアのみ使用できます' };
     }
 
-    const id = customPath || await generateUniqueShortcode();
+    const id = customPath || await generateUniqueShortcode(async (sid) => {
+      const snap = await adminDb.collection(LINKS_COLLECTION).doc(sid).get();
+      return snap.exists;
+    });
 
     if (customPath) {
       const docSnap = await adminDb.collection(LINKS_COLLECTION).doc(customPath).get();
@@ -110,4 +113,27 @@ export async function incrementClickCountAdmin(id: string) {
     clicks: FieldValue.increment(1),
     updatedAt: new Date(),
   });
+}
+
+export async function updateAnalyticsAdmin(
+  id: string,
+  deviceInfo: { platform: Platform; browser: string; device: string; region?: string }
+) {
+  try {
+    const docSnap = await adminDb.collection(LINKS_COLLECTION).doc(id).get();
+    if (!docSnap.exists) return;
+    const data = docSnap.data()!;
+    const analytics = data.analytics || { platforms: {}, devices: {}, browsers: {}, regions: {} };
+
+    analytics.platforms[deviceInfo.platform] = (analytics.platforms[deviceInfo.platform] || 0) + 1;
+    analytics.devices[deviceInfo.device] = (analytics.devices[deviceInfo.device] || 0) + 1;
+    analytics.browsers[deviceInfo.browser] = (analytics.browsers[deviceInfo.browser] || 0) + 1;
+    if (deviceInfo.region) {
+      analytics.regions[deviceInfo.region] = (analytics.regions[deviceInfo.region] || 0) + 1;
+    }
+
+    await adminDb.collection(LINKS_COLLECTION).doc(id).update({ analytics, updatedAt: new Date() });
+  } catch (error) {
+    console.error('Analytics update error:', error);
+  }
 }

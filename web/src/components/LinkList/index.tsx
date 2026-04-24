@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink, Smartphone, Globe, Activity, ChevronDown, ChevronUp, Trash2, Power } from 'lucide-react';
 import { toast } from 'sonner';
-import { getLinks } from '@/app/links';
-import { updateLinkStatus } from '@/lib/db/links';
 import { Link } from '@/lib/db/schema';
 
 function PlatformBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
@@ -55,8 +53,9 @@ export function LinkList() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
-    getLinks()
-      .then(setLinks)
+    fetch('/api/links')
+      .then((r) => r.json())
+      .then((data) => setLinks(data.links || []))
       .catch((e) => console.error('Error fetching links:', e))
       .finally(() => setIsLoading(false));
   }, []);
@@ -76,7 +75,11 @@ export function LinkList() {
     const newStatus = link.status === 'active' ? 'inactive' : 'active';
     setPendingId(link.id);
     try {
-      await updateLinkStatus(link.id, newStatus);
+      await fetch(`/api/links/${link.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
       setLinks((prev) => prev.map((l) => l.id === link.id ? { ...l, status: newStatus } : l));
       toast.success(newStatus === 'active' ? 'リンクを有効にしました' : 'リンクを無効にしました');
     } catch {
@@ -90,7 +93,7 @@ export function LinkList() {
     if (!confirm(`「${window.location.origin}/${link.id}」を削除しますか？`)) return;
     setPendingId(link.id);
     try {
-      await updateLinkStatus(link.id, 'inactive');
+      await fetch(`/api/links/${link.id}`, { method: 'DELETE' });
       setLinks((prev) => prev.filter((l) => l.id !== link.id));
       toast.success('リンクを削除しました');
     } catch {

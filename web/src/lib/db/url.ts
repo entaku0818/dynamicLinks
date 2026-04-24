@@ -1,13 +1,14 @@
 import { customAlphabet } from 'nanoid';
-import { checkLinkExists } from './links';
 
 const alphabet = '23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ';
 const nanoid = customAlphabet(alphabet, 6);
 
-export async function generateUniqueShortcode(): Promise<string> {
+export async function generateUniqueShortcode(
+  checkExists: (id: string) => Promise<boolean>
+): Promise<string> {
   while (true) {
     const shortcode = nanoid();
-    const exists = await checkLinkExists(shortcode);
+    const exists = await checkExists(shortcode);
     if (!exists) {
       return shortcode;
     }

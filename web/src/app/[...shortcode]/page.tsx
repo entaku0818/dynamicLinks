@@ -2,7 +2,7 @@ import { redirect, RedirectType, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getLink } from '../links';
 import { PlatformDetector } from '@/lib/platform/detector';
-import { incrementClickCount, updateAnalytics } from '@/lib/db/links';
+import { incrementClickCountAdmin, updateAnalyticsAdmin } from '@/lib/db/links-admin';
 import { Link } from '@/lib/db/schema';
 
 export default async function ShortCodePage({
@@ -28,8 +28,8 @@ export default async function ShortCodePage({
 
   try {
     await Promise.all([
-      incrementClickCount(code),
-      updateAnalytics(code, {
+      incrementClickCountAdmin(code),
+      updateAnalyticsAdmin(code, {
         platform: deviceInfo.platform,
         browser: deviceInfo.browser,
         device: deviceInfo.device,

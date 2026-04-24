@@ -23,7 +23,10 @@ export async function createLink(
       return { error: 'カスタムパスには英数字、ハイフン、アンダースコアのみ使用できます' };
     }
 
-    const id = customPath || await generateUniqueShortcode();
+    const id = customPath || await generateUniqueShortcode(async (sid) => {
+      const snap = await getDoc(doc(db, LINKS_COLLECTION, sid));
+      return snap.exists();
+    });
     
     // カスタムパスが既に使用されているかチェック
     if (customPath) {
