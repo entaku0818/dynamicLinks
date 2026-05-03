@@ -8,9 +8,9 @@ import { Link } from '@/lib/db/schema';
 export default async function ShortCodePage({
   params,
 }: {
-  params: { shortcode: string[] };
+  params: Promise<{ shortcode: string[] }>;
 }) {
-  const { shortcode: paramValue } = params;
+  const { shortcode: paramValue } = await params;
   const code = paramValue[0];
 
   const headersList = await headers();

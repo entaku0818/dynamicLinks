@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,13 @@ export default function LoginPage() {
           <Suspense>
             <LoginForm />
           </Suspense>
+          <p className="text-center text-sm text-gray-400 mt-4">
+            初めての方は{' '}
+            <Link href="/onboarding" className="text-blue-500 hover:underline">
+              導入ガイド
+            </Link>
+            をご覧ください
+          </p>
         </CardContent>
       </Card>
     </main>
