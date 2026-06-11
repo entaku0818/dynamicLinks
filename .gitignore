@@ -1,3 +1,15 @@
 sample/sampleProject/sampleProject.xcodeproj/xcuserdata/entaku.xcuserdatad/xcschemes/xcschememanagement.plist
 sample/sampleProject/sampleProject.xcodeproj/project.xcworkspace/xcuserdata/entaku.xcuserdatad/UserInterfaceState.xcuserstate
 DynamicLinkSDK/.swiftpm/xcode/xcuserdata/entaku.xcuserdatad/xcschemes/xcschememanagement.plist
+
+# Build artifacts
+DynamicLinkSDK/.build/
+AndroidDynamicLinkSDK/.gradle/
+AndroidDynamicLinkSDK/build/
+AndroidDynamicLinkSDK/**/build/
+AndroidDynamicLinkSDK/local.properties
+
+# Tools
+.claude/
+.playwright-mcp/
+.DS_Store
