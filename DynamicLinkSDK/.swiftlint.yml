@@ -1,0 +1,6 @@
+included:
+  - Sources
+  - Tests
+
+disabled_rules:
+  - trailing_whitespace # 既存コードに多数あるため。新規コードでは避けること
