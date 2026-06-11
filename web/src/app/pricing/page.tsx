@@ -58,6 +58,7 @@ function PricingContent() {
       });
       const data = await res.json();
       if (data.url) {
+        // eslint-disable-next-line react-hooks/immutability -- Stripe Checkout への外部リダイレクト
         window.location.href = data.url;
       } else {
         toast.error('エラーが発生しました');
