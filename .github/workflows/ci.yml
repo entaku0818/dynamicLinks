@@ -73,3 +73,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build, Test & Lint
         run: ./gradlew :sdk:testDebugUnitTest :sdk:lintDebug :sdk:assembleRelease
+
+  sample-ios:
+    name: Sample iOS App (Xcode)
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: sample/sampleProject
+    steps:
+      - uses: actions/checkout@v4
+      - name: SwiftLint
+        run: |
+          which swiftlint || brew install swiftlint
+          swiftlint lint --path sampleProject
+      - name: Build & Test (unit tests only)
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -oE 'iPhone [^(]+' | head -1 | xargs)
+          echo "Using simulator: $DEVICE"
+          xcodebuild \
+            -scheme sampleProject \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            -skip-testing:sampleProjectUITests \
+            test
