@@ -85,7 +85,7 @@ jobs:
       - name: SwiftLint
         run: |
           which swiftlint || brew install swiftlint
-          swiftlint lint --path sampleProject
+          swiftlint lint
       - name: Build & Test (unit tests only)
         run: |
           DEVICE=$(xcrun simctl list devices available | grep -oE 'iPhone [^(]+' | head -1 | xargs)
